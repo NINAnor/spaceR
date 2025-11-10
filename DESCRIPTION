@@ -11,3 +11,6 @@ RoxygenNote: 7.2.3
 Imports: 
     BalancedSampling
 URL: https://ninanor.github.io/spaceR/
+Depends: 
+    R (>= 3.5)
+LazyData: true
