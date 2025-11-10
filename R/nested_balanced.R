@@ -79,7 +79,9 @@ nested_balanced <- function(
     xbal_formula = ~ 1,
     exclude_offset = 1e6,
     return_dataframe = FALSE,
-    out_name = "mysample"
+    out_name = "mysample",
+    safetyNumber = 0,
+    auto_n = TRUE
 ) {
   if (!requireNamespace("BalancedSampling", quietly = TRUE)) {
     stop("Package 'BalancedSampling' is required but not installed.")
@@ -133,15 +135,25 @@ nested_balanced <- function(
   for (n_now in n_seq) {
     # Remaining area per stratum among eligible units
     rem_area_by_stratum <- strat_totals(area, keep_idx = eligible)
-    
+
     # Map each unit's stratum to the remaining area value
     rem_area_unit <- rem_area_by_stratum[as.character(stratum)]
     if (any(rem_area_unit <= 0)) {
       stop("Some strata have zero remaining area among eligible units; cannot compute probabilities.")
     }
     
+    # Auto n - find the highest possible next n that results in probabilities <max_pi
+    auto_n <- ceiling(max(n_now - rem_area_by_stratum)) + safetyNumber
+
+    if(n_now == n_seq[1]) {
+      n_ <- n_now
+    } else {
+      n_ <- ifelse(auto_n, auto_n, n_now)
+    }
+
+
     # Inclusion probabilities for this draw (0 for ineligible)
-    prob <- ifelse(eligible, n_now * area / rem_area_unit, 0)
+    prob <- ifelse(eligible, n_ * area / rem_area_unit, 0)
     if (any(prob >= 1)) {
       stop("Some population units have >1 probability of being selected.")
     }
@@ -163,6 +175,7 @@ nested_balanced <- function(
     # Keep only selected rows
     current_sample <- samplingFrame[sel_idx, , drop = FALSE]
     
+        
     get_n <- function(x) {
       x |>
         group_by(stratum) |>
@@ -182,7 +195,7 @@ nested_balanced <- function(
 
     currentIDs <- current_sample[[id_col]]
     if (anyDuplicated(currentIDs) != 0) stop("The ID columns on one of the samples duplicates.")
-
+      
     # Save result
     name_now <- paste(out_name, n_now, sep = "_")
     if (return_dataframe) {
@@ -196,6 +209,8 @@ nested_balanced <- function(
     # Reset 'eligible' to FALSE and flag selected rows TRUE
     eligible <- rep(FALSE, nrow(samplingFrame))
     eligible[sel_idx] <- TRUE
+
+    if(n_ < n_now) break
   }
   
   return(out)
