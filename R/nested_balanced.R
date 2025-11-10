@@ -12,7 +12,7 @@
 #'   decreasing order, e.g. `c(100, 80, 60, 40, 20)`. The first element is the
 #'   largest (top-level) sample; each subsequent element is a nested subsample
 #'   of the previous.
-#' @param id_col Name of the ID column in `samplingFrame`. Default `"ID"`. Needs to be unique to each population unit.
+#' @param id_col Name of the ID column in `samplingFrame`. Default `"ID"`. Needs to be unique to each population unit. 
 #' @param stratum_col Name of the stratum column in `samplingFrame`. Default `"stratum"`.
 #' @param easting_col Name of the easting (x) coordinate column. Default `"Easting"`.
 #' @param northing_col Name of the northing (y) coordinate column. Default `"Northing"`.
@@ -25,8 +25,8 @@
 #'   auxiliaries beyond spreading/strata).
 #' @param exclude_offset Numeric offset added to the max of each coordinate to
 #'   push excluded units *far away* for the spreading step. Default `1e6`.
-#' @param return_indices Logical; if `TRUE`, also returns row indices (per `samplingFrame`)
-#'   instead of just the filtered data frames. Default `FALSE`.
+#' @param return_dataframe Logical; if `TRUE`, also returns a filtered sampling frame, with all columns, 
+#'   instead of just the populatio units ID's. Default `FALSE`.
 #'
 #' @details
 #' For each requested sample size `n` (per stratum), the function sets inclusion
@@ -40,15 +40,15 @@
 #' Requires \pkg{BalancedSampling}.
 #'
 #' @return A named list. For each `n` in `n_seq` you get an element named
-#'   `n{n}` (e.g. `n100`, `n80`, ...), each being a `data.frame` with the rows
-#'   of `samplingFrame` that were selected. If `return_indices = TRUE`, each element is a
-#'   list with `samplingFrame` and `indices`.
+#'   `n{n}` (e.g. `n100`, `n80`, ...), each being either a string of population ID's,
+#'   or, if `return_dataframe = TRUE` a `data.frame` with the rows
+#'   of `samplingFrame` that were selected. 
 #'
 #' @examples
 #' \dontrun{
 #' # Suppose mypop has: ID, stratum, Easting, Northing, area2, aux1, aux2
 #' # We want nested samples of sizes 100, 80, 60, 40, 20 per stratum:
-#' out <- nested_balanced_samples(
+#' out <- nested_balanced(
 #'   data = mypop,
 #'   n_seq = c(100, 80, 60, 40, 20),
 #'   id_col = "ID",
@@ -66,7 +66,7 @@
 #'
 #' @importFrom stats model.matrix
 #' @export
-nested_balanced_samples <- function(
+nested_balanced <- function(
     samplingFrame,
     n_seq,
     id_col = "ID",
@@ -76,7 +76,7 @@ nested_balanced_samples <- function(
     area_col = "area",
     xbal_formula = ~ 1,
     exclude_offset = 1e6,
-    return_indices = FALSE
+    return_dataframe = FALSE
 ) {
   if (!requireNamespace("BalancedSampling", quietly = TRUE)) {
     stop("Package 'BalancedSampling' is required but not installed.")
@@ -158,13 +158,11 @@ nested_balanced_samples <- function(
     
     # Save result
     name_now <- paste0("n", n_now)
-    if (return_indices) {
-      out[[name_now]] <- list(
-        data    = current_sample,
-        indices = sel_idx
-      )
-    } else {
+    if (return_dataframe) {
       out[[name_now]] <- current_sample
+      
+    } else {
+      out[[name_now]] <- current_sample$ID
     }
     
     # For the next (smaller) sample, only the current selection remains eligible
