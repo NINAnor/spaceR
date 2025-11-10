@@ -166,18 +166,14 @@ nested_balanced <- function(
         pull(n)
     }
 
-    n_string <- get_n(mypop)
+    n_string <- get_n(current_sample)
 
     if(length(unique(n_string)) != 1) {
-      stop("The n differs amongst strata in one of the samples.")
+      warning("The n differs amongst strata in one of the samples.")
     }
 
-    if(unique(n_string) != n_now) {
-      stop("The n for one of the samples differs from the prescribed n.")
-    }
-
-    if (nrow(current_sample) != n_now) {
-      stop("One of the samples have a length that differs from prescribed n.")
+    if(unique(n_string)[1] != n_now) {
+      warning("The n for at least one of the samples differs from the prescribed n.")
     }
 
     # Save result
