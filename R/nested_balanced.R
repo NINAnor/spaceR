@@ -138,6 +138,9 @@ nested_balanced <- function(
     
     # Inclusion probabilities for this draw (0 for ineligible)
     prob <- ifelse(eligible, n_now * area / rem_area_unit, 0)
+    if (any(prob >= 1)) {
+      stop("Some population units have >1 probability of being selected.")
+    }
     
     # Build Xspread: real coords for eligible units; far away for others
     Xspread <- cbind(
