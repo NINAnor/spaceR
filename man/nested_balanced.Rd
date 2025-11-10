@@ -14,7 +14,7 @@ nested_balanced(
   area_col = "area",
   xbal_formula = ~1,
   exclude_offset = 1e+06,
-  return_indices = FALSE
+  return_dataframe = FALSE
 )
 }
 \arguments{
@@ -45,14 +45,14 @@ auxiliaries beyond spreading/strata).}
 \item{exclude_offset}{Numeric offset added to the max of each coordinate to
 push excluded units \emph{far away} for the spreading step. Default \code{1e6}.}
 
-\item{return_indices}{Logical; if \code{TRUE}, also returns row indices (per \code{samplingFrame})
-instead of just the filtered data frames. Default \code{FALSE}.}
+\item{return_dataframe}{Logical; if \code{TRUE}, also returns a filtered sampling frame, with all columns,
+instead of just the populatio units ID's. Default \code{FALSE}.}
 }
 \value{
 A named list. For each \code{n} in \code{n_seq} you get an element named
-\verb{n\{n\}} (e.g. \code{n100}, \code{n80}, ...), each being a \code{data.frame} with the rows
-of \code{samplingFrame} that were selected. If \code{return_indices = TRUE}, each element is a
-list with \code{samplingFrame} and \code{indices}.
+\verb{n\{n\}} (e.g. \code{n100}, \code{n80}, ...), each being either a string of population ID's,
+or, if \code{return_dataframe = TRUE} a \code{data.frame} with the rows
+of \code{samplingFrame} that were selected.
 }
 \description{
 Draws a sequence of \strong{nested} samples per stratum that are both

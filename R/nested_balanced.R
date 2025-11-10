@@ -159,6 +159,27 @@ nested_balanced <- function(
     # Keep only selected rows
     current_sample <- samplingFrame[sel_idx, , drop = FALSE]
     
+    get_n <- function(x) {
+      x |>
+        group_by(stratum) |>
+        summarise(n = n()) |> 
+        pull(n)
+    }
+
+    n_string <- get_n(mypop)
+
+    if(length(unique(n_string)) != 1) {
+      stop("The n differs amongst strata in one of the samples.")
+    }
+
+    if(unique(n_string) != n_now) {
+      stop("The n for one of the samples differs from the prescribed n.")
+    }
+
+    if (nrow(current_sample) != n_now) {
+      stop("One of the samples have a length that differs from prescribed n.")
+    }
+
     # Save result
     name_now <- paste0("n", n_now)
     if (return_dataframe) {
