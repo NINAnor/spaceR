@@ -96,6 +96,7 @@ nested_balanced <- function(
   area      <- samplingFrame[[area_col]]
   
   if (anyNA(id)) stop("ID column contains NA.")
+  if (anyDuplicated(id) != 0) stop("The ID columns contains duplicates.")
   if (anyNA(stratum)) stop("Stratum column contains NA.")
   if (anyNA(easting) || anyNA(northing)) stop("Coordinate columns contain NA.")
   if (anyNA(area)) stop("Area column contains NA.")
@@ -176,13 +177,16 @@ nested_balanced <- function(
       warning("The n for at least one of the samples differs from the prescribed n.")
     }
 
+    currentIDs <- current_sample[[id_col]]
+    if (anyDuplicated(currentIDs) != 0) stop("The ID columns on one of the samples duplicates.")
+
     # Save result
     name_now <- paste0("n", n_now)
     if (return_dataframe) {
       out[[name_now]] <- current_sample
       
     } else {
-      out[[name_now]] <- current_sample$ID
+      out[[name_now]] <- currentIDs
     }
     
     # For the next (smaller) sample, only the current selection remains eligible
