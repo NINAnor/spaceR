@@ -1,4 +1,4 @@
-
+# spaceR
 Tools for spatial sampling
 
 ## Installation
