@@ -63,7 +63,10 @@ the coordinated of the included population units only.</p>
 <span>  xbal_formula <span class="op">=</span> <span class="op">~</span><span class="fl">1</span>,</span>
 <span>  exclude_offset <span class="op">=</span> <span class="fl">1e+06</span>,</span>
 <span>  return_dataframe <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  out_name <span class="op">=</span> <span class="st">"mysample"</span></span>
+<span>  out_name <span class="op">=</span> <span class="st">"mysample"</span>,</span>
+<span>  safetyNumber <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  auto_n <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  min_step <span class="op">=</span> <span class="fl">10</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -79,7 +82,8 @@ the coordinated of the included population units only.</p>
 <dd><p>Numeric vector of desired <strong>per-stratum</strong> sample sizes in
 decreasing order, e.g. <code>c(100, 80, 60, 40, 20)</code>. The first element is the
 largest (top-level) sample; each subsequent element is a nested subsample
-of the previous.</p></dd>
+of the previous. If auto_n is TRUE (which is the default), then only two values are needed; a
+start and a stop values (i.e. c(100, 10)).</p></dd>
 
 
 <dt id="arg-id-col">id_col<a class="anchor" aria-label="anchor" href="#arg-id-col"></a></dt>
@@ -121,6 +125,22 @@ push excluded units <em>far away</em> for the spreading step. Default <code>1e6<
 instead of just the populatio units ID's. Default <code>FALSE</code>.</p></dd>
 
 
+<dt id="arg-safetynumber">safetyNumber<a class="anchor" aria-label="anchor" href="#arg-safetynumber"></a></dt>
+<dd><p>Numeric; constant which is subtracted from difference between the current n
+(for a given sample) and the remaining area, in order to keep probabilities above 1. Default is 1,
+and the parameter normally don't need to be altered.</p></dd>
+
+
+<dt id="arg-auto-n">auto_n<a class="anchor" aria-label="anchor" href="#arg-auto-n"></a></dt>
+<dd><p>Logical; if the function should try to find the smallest possible step (but still larger than
+'min_step') that still produces inclusion probabilities &lt; 1. Default is TRUE, and then the n_seq can be
+set to just two numbers, a start and a stop value. If FALSE, then the n is given ny 'n_seq'.</p></dd>
+
+
+<dt id="arg-min-step">min_step<a class="anchor" aria-label="anchor" href="#arg-min-step"></a></dt>
+<dd><p>Numeric;, the minimal reduction in n between subsequent samples. Default is 10.</p></dd>
+
+
 <dt id="arg-mysample">mysample<a class="anchor" aria-label="anchor" href="#arg-mysample"></a></dt>
 <dd><p>Character; text to be prepended to the sample names, followed by the sample size.
 Default to 'mysample' which will name the output like 'mysample_n' where n is the sample size.</p></dd>
@@ -128,9 +148,11 @@ Default to 'mysample' which will name the output like 'mysample_n' where n is th
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A named list. For each <code>n</code> in <code>n_seq</code> you get an element named
-<code>n{n}</code> (e.g. <code>n100</code>, <code>n80</code>, ...), each being either a string of population ID's,
-or, if <code>return_dataframe = TRUE</code> a <code>data.frame</code> with the rows
+    <p>A named list of lists. For each <code>n</code> you get an element named
+<code>mysample{n}</code> (e.g. <code>wetlands_100</code>, <code>wetlands_80</code>, ...), each containing a list of population ID's,
+and a list of inclusion probabilities, which are the accumulated probabilities. This means that if the
+probability of a unit in the initial sample is 0.1, and in the second sample it was 0.9, then the accumulated
+probaili is 0.09. If <code>return_dataframe = TRUE</code> a <code>data.frame</code> with the rows
 of <code>samplingFrame</code> that were selected.</p>
     </div>
     <div class="section level2">
@@ -150,6 +172,8 @@ coordinates far outside the study area to avoid influencing the spread.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
 <span class="r-in"><span><span class="co"># Suppose mypop has: ID, stratum, Easting, Northing, area2, aux1, aux2</span></span></span>
 <span class="r-in"><span><span class="co"># We want nested samples of sizes 100, 80, 60, 40, 20 per stratum:</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">mypop</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">out</span> <span class="op">&lt;-</span> <span class="fu">nested_balanced</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  data <span class="op">=</span> <span class="va">mypop</span>,</span></span>
 <span class="r-in"><span>  n_seq <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">100</span>, <span class="fl">80</span>, <span class="fl">60</span>, <span class="fl">40</span>, <span class="fl">20</span><span class="op">)</span>,</span></span>
@@ -158,7 +182,9 @@ coordinates far outside the study area to avoid influencing the spread.</p>
 <span class="r-in"><span>  easting_col <span class="op">=</span> <span class="st">"Easting"</span>,</span></span>
 <span class="r-in"><span>  northing_col <span class="op">=</span> <span class="st">"Northing"</span>,</span></span>
 <span class="r-in"><span>  area_col <span class="op">=</span> <span class="st">"area2"</span>,</span></span>
-<span class="r-in"><span>  xbal_formula <span class="op">=</span> <span class="op">~</span> <span class="va">aux1</span> <span class="op">+</span> <span class="va">aux2</span> <span class="op">-</span> <span class="fl">1</span></span></span>
+<span class="r-in"><span>  xbal_formula <span class="op">=</span> <span class="op">~</span> <span class="va">aux1</span> <span class="op">+</span> <span class="va">aux2</span> <span class="op">-</span> <span class="fl">1</span>,</span></span>
+<span class="r-in"><span>  auto_n <span class="op">=</span> <span class="cn">FALSE</span>,</span></span>
+<span class="r-in"><span>  mysample <span class="op">=</span> <span class="st">"sample"</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Access the largest and a nested subset:</span></span></span>

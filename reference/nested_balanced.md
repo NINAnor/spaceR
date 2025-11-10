@@ -22,7 +22,10 @@ nested_balanced(
   xbal_formula = ~1,
   exclude_offset = 1e+06,
   return_dataframe = FALSE,
-  out_name = "mysample"
+  out_name = "mysample",
+  safetyNumber = 1,
+  auto_n = TRUE,
+  min_step = 10
 )
 ```
 
@@ -37,7 +40,8 @@ nested_balanced(
   Numeric vector of desired **per-stratum** sample sizes in decreasing
   order, e.g. `c(100, 80, 60, 40, 20)`. The first element is the largest
   (top-level) sample; each subsequent element is a nested subsample of
-  the previous.
+  the previous. If auto_n is TRUE (which is the default), then only two
+  values are needed; a start and a stop values (i.e. c(100, 10)).
 
 - id_col:
 
@@ -79,6 +83,26 @@ nested_balanced(
   Logical; if `TRUE`, also returns a filtered sampling frame, with all
   columns, instead of just the populatio units ID's. Default `FALSE`.
 
+- safetyNumber:
+
+  Numeric; constant which is subtracted from difference between the
+  current n (for a given sample) and the remaining area, in order to
+  keep probabilities above 1. Default is 1, and the parameter normally
+  don't need to be altered.
+
+- auto_n:
+
+  Logical; if the function should try to find the smallest possible step
+  (but still larger than 'min_step') that still produces inclusion
+  probabilities \< 1. Default is TRUE, and then the n_seq can be set to
+  just two numbers, a start and a stop value. If FALSE, then the n is
+  given ny 'n_seq'.
+
+- min_step:
+
+  Numeric;, the minimal reduction in n between subsequent samples.
+  Default is 10.
+
 - mysample:
 
   Character; text to be prepended to the sample names, followed by the
@@ -87,10 +111,13 @@ nested_balanced(
 
 ## Value
 
-A named list. For each `n` in `n_seq` you get an element named `n{n}`
-(e.g. `n100`, `n80`, ...), each being either a string of population
-ID's, or, if `return_dataframe = TRUE` a `data.frame` with the rows of
-`samplingFrame` that were selected.
+A named list of lists. For each `n` you get an element named
+`mysample{n}` (e.g. `wetlands_100`, `wetlands_80`, ...), each containing
+a list of population ID's, and a list of inclusion probabilities, which
+are the accumulated probabilities. This means that if the probability of
+a unit in the initial sample is 0.1, and in the second sample it was
+0.9, then the accumulated probaili is 0.09. If `return_dataframe = TRUE`
+a `data.frame` with the rows of `samplingFrame` that were selected.
 
 ## Details
 
@@ -111,6 +138,8 @@ Requires BalancedSampling.
 if (FALSE) { # \dontrun{
 # Suppose mypop has: ID, stratum, Easting, Northing, area2, aux1, aux2
 # We want nested samples of sizes 100, 80, 60, 40, 20 per stratum:
+
+data(mypop)
 out <- nested_balanced(
   data = mypop,
   n_seq = c(100, 80, 60, 40, 20),
@@ -119,7 +148,9 @@ out <- nested_balanced(
   easting_col = "Easting",
   northing_col = "Northing",
   area_col = "area2",
-  xbal_formula = ~ aux1 + aux2 - 1
+  xbal_formula = ~ aux1 + aux2 - 1,
+  auto_n = FALSE,
+  mysample = "sample"
 )
 
 # Access the largest and a nested subset:
