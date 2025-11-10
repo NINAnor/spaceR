@@ -15,7 +15,10 @@ nested_balanced(
   xbal_formula = ~1,
   exclude_offset = 1e+06,
   return_dataframe = FALSE,
-  out_name = "mysample"
+  out_name = "mysample",
+  safetyNumber = 1,
+  auto_n = TRUE,
+  min_step = 10
 )
 }
 \arguments{
@@ -24,7 +27,8 @@ nested_balanced(
 \item{n_seq}{Numeric vector of desired \strong{per-stratum} sample sizes in
 decreasing order, e.g. \code{c(100, 80, 60, 40, 20)}. The first element is the
 largest (top-level) sample; each subsequent element is a nested subsample
-of the previous.}
+of the previous. If auto_n is TRUE (which is the default), then only two values are needed; a
+start and a stop values (i.e. c(100, 10)).}
 
 \item{id_col}{Name of the ID column in \code{samplingFrame}. Default \code{"ID"}. Needs to be unique to each population unit.}
 
@@ -49,13 +53,25 @@ push excluded units \emph{far away} for the spreading step. Default \code{1e6}.}
 \item{return_dataframe}{Logical; if \code{TRUE}, also returns a filtered sampling frame, with all columns,
 instead of just the populatio units ID's. Default \code{FALSE}.}
 
+\item{safetyNumber}{Numeric; constant which is subtracted from difference between the current n
+(for a given sample) and the remaining area, in order to keep probabilities above 1. Default is 1,
+and the parameter normally don't need to be altered.}
+
+\item{auto_n}{Logical; if the function should try to find the smallest possible step (but still larger than
+'min_step') that still produces inclusion probabilities < 1. Default is TRUE, and then the n_seq can be
+set to just two numbers, a start and a stop value. If FALSE, then the n is given ny 'n_seq'.}
+
+\item{min_step}{Numeric;, the minimal reduction in n between subsequent samples. Default is 10.}
+
 \item{mysample}{Character; text to be prepended to the sample names, followed by the sample size.
 Default to 'mysample' which will name the output like 'mysample_n' where n is the sample size.}
 }
 \value{
-A named list. For each \code{n} in \code{n_seq} you get an element named
-\verb{n\{n\}} (e.g. \code{n100}, \code{n80}, ...), each being either a string of population ID's,
-or, if \code{return_dataframe = TRUE} a \code{data.frame} with the rows
+A named list of lists. For each \code{n} you get an element named
+\verb{mysample\{n\}} (e.g. \code{wetlands_100}, \code{wetlands_80}, ...), each containing a list of population ID's,
+and a list of inclusion probabilities, which are the accumulated probabilities. This means that if the
+probability of a unit in the initial sample is 0.1, and in the second sample it was 0.9, then the accumulated
+probaili is 0.09. If \code{return_dataframe = TRUE} a \code{data.frame} with the rows
 of \code{samplingFrame} that were selected.
 }
 \description{
@@ -81,6 +97,8 @@ Requires \pkg{BalancedSampling}.
 \dontrun{
 # Suppose mypop has: ID, stratum, Easting, Northing, area2, aux1, aux2
 # We want nested samples of sizes 100, 80, 60, 40, 20 per stratum:
+
+data(mypop)
 out <- nested_balanced(
   data = mypop,
   n_seq = c(100, 80, 60, 40, 20),
@@ -89,7 +107,9 @@ out <- nested_balanced(
   easting_col = "Easting",
   northing_col = "Northing",
   area_col = "area2",
-  xbal_formula = ~ aux1 + aux2 - 1
+  xbal_formula = ~ aux1 + aux2 - 1,
+  auto_n = FALSE,
+  mysample = "sample"
 )
 
 # Access the largest and a nested subset:
