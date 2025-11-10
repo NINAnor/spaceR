@@ -14,7 +14,8 @@ nested_balanced(
   area_col = "area",
   xbal_formula = ~1,
   exclude_offset = 1e+06,
-  return_dataframe = FALSE
+  return_dataframe = FALSE,
+  out_name = "mysample"
 )
 }
 \arguments{
@@ -47,6 +48,9 @@ push excluded units \emph{far away} for the spreading step. Default \code{1e6}.}
 
 \item{return_dataframe}{Logical; if \code{TRUE}, also returns a filtered sampling frame, with all columns,
 instead of just the populatio units ID's. Default \code{FALSE}.}
+
+\item{mysample}{Character; text to be prepended to the sample names, followed by the sample size.
+Default to 'mysample' which will name the output like 'mysample_n' where n is the sample size.}
 }
 \value{
 A named list. For each \code{n} in \code{n_seq} you get an element named
@@ -89,8 +93,8 @@ out <- nested_balanced(
 )
 
 # Access the largest and a nested subset:
-sample_100 <- out$n100
-sample_60  <- out$n60
+sample_100 <- out$mysample_100
+sample_60  <- out$mysample_60
 }
 
 }

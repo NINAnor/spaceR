@@ -27,6 +27,8 @@
 #'   push excluded units *far away* for the spreading step. Default `1e6`.
 #' @param return_dataframe Logical; if `TRUE`, also returns a filtered sampling frame, with all columns, 
 #'   instead of just the populatio units ID's. Default `FALSE`.
+#' @param mysample Character; text to be prepended to the sample names, followed by the sample size. 
+#' Default to 'mysample' which will name the output like 'mysample_n' where n is the sample size.
 #'
 #' @details
 #' For each requested sample size `n` (per stratum), the function sets inclusion
@@ -60,8 +62,8 @@
 #' )
 #'
 #' # Access the largest and a nested subset:
-#' sample_100 <- out$n100
-#' sample_60  <- out$n60
+#' sample_100 <- out$mysample_100
+#' sample_60  <- out$mysample_60
 #' }
 #'
 #' @importFrom stats model.matrix
@@ -76,7 +78,8 @@ nested_balanced <- function(
     area_col = "area",
     xbal_formula = ~ 1,
     exclude_offset = 1e6,
-    return_dataframe = FALSE
+    return_dataframe = FALSE,
+    out_name = "mysample"
 ) {
   if (!requireNamespace("BalancedSampling", quietly = TRUE)) {
     stop("Package 'BalancedSampling' is required but not installed.")
@@ -181,7 +184,7 @@ nested_balanced <- function(
     if (anyDuplicated(currentIDs) != 0) stop("The ID columns on one of the samples duplicates.")
 
     # Save result
-    name_now <- paste0("n", n_now)
+    name_now <- paste(out_name, n_now, sep = "_")
     if (return_dataframe) {
       out[[name_now]] <- current_sample
       
