@@ -2,6 +2,7 @@
 
 Draws a sequence of **nested** samples per stratum that are both
 probability-balanced (via BalancedSampling) and well-spread in space.
+The first sample can also use probabilities proportional to size (pps).
 The largest sample is drawn first; each subsequent (smaller) sample is
 drawn *from the previous sample only*, but balanced against the
 auxiliary variables at the level of the whole population, while spatial
@@ -23,9 +24,7 @@ nested_balanced(
   exclude_offset = 1e+06,
   return_dataframe = FALSE,
   out_name = "mysample",
-  safetyNumber = 1,
-  auto_n = TRUE,
-  min_step = 10
+  quiet = FALSE
 )
 ```
 
@@ -40,8 +39,7 @@ nested_balanced(
   Numeric vector of desired **per-stratum** sample sizes in decreasing
   order, e.g. `c(100, 80, 60, 40, 20)`. The first element is the largest
   (top-level) sample; each subsequent element is a nested subsample of
-  the previous. If auto_n is TRUE (which is the default), then only two
-  values are needed; a start and a stop values (i.e. c(100, 10)).
+  the previous.
 
 - id_col:
 
@@ -81,29 +79,10 @@ nested_balanced(
 - return_dataframe:
 
   Logical; if `TRUE`, also returns a filtered sampling frame, with all
-  columns, instead of just the populatio units ID's. Default `FALSE`.
+  columns, instead of just the population units ID's and the
+  probabilities. Default `FALSE`.
 
-- safetyNumber:
-
-  Numeric; constant which is subtracted from difference between the
-  current n (for a given sample) and the remaining area, in order to
-  keep probabilities above 1. Default is 1, and the parameter normally
-  don't need to be altered.
-
-- auto_n:
-
-  Logical; if the function should try to find the smallest possible step
-  (but still larger than 'min_step') that still produces inclusion
-  probabilities \< 1. Default is TRUE, and then the n_seq can be set to
-  just two numbers, a start and a stop value. If FALSE, then the n is
-  given ny 'n_seq'.
-
-- min_step:
-
-  Numeric;, the minimal reduction in n between subsequent samples.
-  Default is 10.
-
-- mysample:
+- out_name:
 
   Character; text to be prepended to the sample names, followed by the
   sample size. Default to 'mysample' which will name the output like
@@ -114,21 +93,24 @@ nested_balanced(
 A named list of lists. For each `n` you get an element named
 `mysample{n}` (e.g. `wetlands_100`, `wetlands_80`, ...), each containing
 a list of population ID's, and a list of inclusion probabilities, which
-are the accumulated probabilities. This means that if the probability of
-a unit in the initial sample is 0.1, and in the second sample it was
-0.9, then the accumulated probaili is 0.09. If `return_dataframe = TRUE`
-a `data.frame` with the rows of `samplingFrame` that were selected.
+are the accumulated probabilities and the initial probabilities. This
+means that if the probability of a unit in the initial sample is 0.1,
+and in the second sample it was 0.9, then the accumulated probaili is
+0.09. If `return_dataframe = TRUE` a `data.frame` with the rows of
+`samplingFrame` that were selected.
 
 ## Details
 
-For each requested sample size `n` (per stratum), the function sets
-inclusion probabilities \\\pi_i = n \cdot a_i / \sum\_{h} a_i\\ within
-each stratum using the `area_col` values \\a_i\\. For the first draw
-this sum is taken over the entire stratum; for subsequent draws it is
-taken over the *previous* sample only, so that samples are nested.
-Spatial spreading uses `Xspread` (Easting/Northing). Units not available
-in the current step are assigned coordinates far outside the study area
-to avoid influencing the spread.
+For each requested sample size `n` in n_seq (per stratum), the function
+returns a balanced, well-spread and stratified sample. All samples are
+nested, so that samples with small n is a (balanced) subset of samples
+with greater n. The largest sample (the first iteration) can use pps,
+and sets inclusion probabilities \\\pi_i = n \cdot a_i / \sum\_{h} a_i\\
+within each stratum using the `area_col` values \\a_i\\. Subsequent
+samples use equal probabilities. Spatial spreading uses `Xspread`
+(Easting/Northing) and is based on the position of the remaining
+population units only. The balancing is, however, always done against
+the entire population.
 
 Requires BalancedSampling.
 
@@ -149,8 +131,7 @@ out <- nested_balanced(
   northing_col = "Northing",
   area_col = "area2",
   xbal_formula = ~ aux1 + aux2 - 1,
-  auto_n = FALSE,
-  mysample = "sample"
+  out_name = "mysample"
 )
 
 # Access the largest and a nested subset:
