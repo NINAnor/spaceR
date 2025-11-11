@@ -166,6 +166,7 @@ nested_balanced <- function(
       message(paste("Sampling with n = ", n_now))
     }
 
+      
     # Inclusion probabilities for this draw (0 for ineligible)
     if(n_now == n_seq[1]) {
       prob <- prob_init
@@ -211,7 +212,7 @@ nested_balanced <- function(
         accumulated_pi = if(n_now == n_seq[1]) {
           prob_init[sel_idx]
         } else {
-        pacc_pi[sel_idx]*prob[sel_idx]   
+          pacc_pi[sel_idx]*prob[sel_idx]   
         }
       )
         
@@ -246,7 +247,10 @@ nested_balanced <- function(
     eligible[sel_idx] <- TRUE
 
 
-    pacc_pi <- prob_last*prob
+    pacc_pi <- if(n_now == n_seq[1]) {
+          prob_init} else {
+          pacc_pi*prob
+          }
     prob_last <- prob
         }
   
