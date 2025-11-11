@@ -204,14 +204,14 @@ nested_balanced <- function(
         initial_pi = prob_init[sel_idx],
         current_pi = prob[sel_idx],
         previous_pi = prob_last[sel_idx],
+        previous_accumulated_pi = if(n_now == n_seq[1]) {
+          prob_init[sel_idx] } else {
+          pacc_pi[sel_idx]
+          },
         accumulated_pi = if(n_now == n_seq[1]) {
           prob_init[sel_idx]
         } else {
-          if(n_now == n_seq[2]) {
-            prob_init[sel_idx]*prob[sel_idx]
-          } else {
-            prob_init[sel_idx]*prob_last[sel_idx]*prob[sel_idx]
-        }
+        pacc_pi[sel_idx]*prob[sel_idx]   
         }
       )
         
@@ -245,9 +245,10 @@ nested_balanced <- function(
     eligible <- rep(FALSE, nrow(samplingFrame))
     eligible[sel_idx] <- TRUE
 
+
+    pacc_pi <- prob_last*prob
     prob_last <- prob
-    
-  }
+        }
   
   return(out)
 }
