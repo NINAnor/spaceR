@@ -2,6 +2,7 @@
 #'
 #' Draws a sequence of **nested** samples per stratum that are both
 #' probability-balanced (via \pkg{BalancedSampling}) and well-spread in space.
+#' The first sample can also use probabilities proportional to size (pps).
 #' The largest sample is drawn first; each subsequent (smaller) sample is drawn
 #' *from the previous sample only*, but balanced against the auxiliary variables at
 #' the level of the whole population, while spatial spreading is computed based on 
@@ -11,8 +12,7 @@
 #' @param n_seq Numeric vector of desired **per-stratum** sample sizes in
 #'   decreasing order, e.g. `c(100, 80, 60, 40, 20)`. The first element is the
 #'   largest (top-level) sample; each subsequent element is a nested subsample
-#'   of the previous. If auto_n is TRUE (which is the default), then only two values are needed; a
-#' start and a stop values (i.e. c(100, 10)).
+#'   of the previous. 
 #' @param id_col Name of the ID column in `samplingFrame`. Default `"ID"`. Needs to be unique to each population unit. 
 #' @param stratum_col Name of the stratum column in `samplingFrame`. Default `"stratum"`.
 #' @param easting_col Name of the easting (x) coordinate column. Default `"Easting"`.
@@ -27,34 +27,30 @@
 #' @param exclude_offset Numeric offset added to the max of each coordinate to
 #'   push excluded units *far away* for the spreading step. Default `1e6`.
 #' @param return_dataframe Logical; if `TRUE`, also returns a filtered sampling frame, with all columns, 
-#'   instead of just the populatio units ID's. Default `FALSE`.
-#' @param mysample Character; text to be prepended to the sample names, followed by the sample size. 
+#'   instead of just the population units ID's and the probabilities. Default `FALSE`.
+#' @param out_name Character; text to be prepended to the sample names, followed by the sample size. 
 #' Default to 'mysample' which will name the output like 'mysample_n' where n is the sample size.
-#' @param safetyNumber Numeric; constant which is subtracted from difference between the current n
-#' (for a given sample) and the remaining area, in order to keep probabilities above 1. Default is 1, 
-#' and the parameter normally don't need to be altered.
-#' @param auto_n Logical; if the function should try to find the smallest possible step (but still larger than 
-#' 'min_step') that still produces inclusion probabilities < 1. Default is TRUE, and then the n_seq can be
-#' set to just two numbers, a start and a stop value. If FALSE, then the n is given ny 'n_seq'. 
-#' @param min_step Numeric;, the minimal reduction in n between subsequent samples. Default is 10.
 #'
 #' @details
-#' For each requested sample size `n` (per stratum), the function sets inclusion
+#' For each requested sample size `n` in n_seq (per stratum), the function returns
+#' a balanced, well-spread and stratified sample. All samples are nested,
+#' so that samples with small n is a (balanced) subset of samples with greater n.
+#' The largest sample (the first iteration) can use pps, and sets inclusion
 #' probabilities \eqn{\pi_i = n \cdot a_i / \sum_{h} a_i} within each stratum
-#' using the `area_col` values \eqn{a_i}. For the first draw this sum is taken
-#' over the entire stratum; for subsequent draws it is taken over the *previous*
-#' sample only, so that samples are nested. Spatial spreading uses \code{Xspread}
-#' (Easting/Northing). Units not available in the current step are assigned
-#' coordinates far outside the study area to avoid influencing the spread.
+#' using the `area_col` values \eqn{a_i}. Subsequent samples use equal probabilities.
+#' Spatial spreading uses \code{Xspread} (Easting/Northing) and is based on the position of 
+#' the remaining population units only. The balancing is, however, always done against the 
+#' entire population.
 #'
 #' Requires \pkg{BalancedSampling}.
 #'
 #' @return A named list of lists. For each `n` you get an element named
 #'   `mysample{n}` (e.g. `wetlands_100`, `wetlands_80`, ...), each containing a list of population ID's,
-#'   and a list of inclusion probabilities, which are the accumulated probabilities. This means that if the 
+#'   and a list of inclusion probabilities, which are the accumulated probabilities and the initial probabilities. 
+#' This means that if the 
 #' probability of a unit in the initial sample is 0.1, and in the second sample it was 0.9, then the accumulated 
 #' probaili is 0.09. If `return_dataframe = TRUE` a `data.frame` with the rows
-#'   of `samplingFrame` that were selected. 
+#' of `samplingFrame` that were selected. 
 #'
 #' @examples
 #' \dontrun{
@@ -71,8 +67,7 @@
 #'   northing_col = "Northing",
 #'   area_col = "area2",
 #'   xbal_formula = ~ aux1 + aux2 - 1,
-#'   auto_n = FALSE,
-#'   mysample = "sample"
+#'   out_name = "mysample"
 #' )
 #'
 #' # Access the largest and a nested subset:
@@ -94,9 +89,7 @@ nested_balanced <- function(
     exclude_offset = 1e6,
     return_dataframe = FALSE,
     out_name = "mysample",
-    safetyNumber = 1,
-    auto_n = TRUE,
-    min_step = 10
+    quiet = FALSE
 ) {
   if (!requireNamespace("BalancedSampling", quietly = TRUE)) {
     stop("Package 'BalancedSampling' is required but not installed.")
@@ -154,38 +147,39 @@ nested_balanced <- function(
   # For the first (largest) sample: all units are eligible
   eligible <- rep(TRUE, nrow(samplingFrame))
   
-  # set prob_last as all 1's for the first iteration of the loop
-  prob_last <- rep(1, nrow(samplingFrame))
-  
-  # make seq longer (denser) of using auto_n
-  if(auto_n) {
-    n_seq2 <- seq(max(n_seq), min(n_seq), -1)
-  } 
-  
-  # Iterate over requested nested sizes
-  for (n_now in n_seq2) {
-    # Remaining area per stratum among eligible units
-    rem_area_by_stratum <- strat_totals(area, keep_idx = eligible)
-
+  # Calculate the probabilities for the first iteration, using pps
+    # Area per stratum among eligible units
+      rem_area_by_stratum <- strat_totals(area, keep_idx = eligible)
+      
     # Map each unit's stratum to the remaining area value
-    rem_area_unit <- rem_area_by_stratum[as.character(stratum)]
-    if (any(rem_area_unit <= 0)) {
-      stop("Some strata have zero remaining area among eligible units; cannot compute probabilities.")
-    }
+      rem_area_unit <- rem_area_by_stratum[as.character(stratum)]
+        if (any(rem_area_unit <= 0)) {
+          stop("Some strata have zero area; cannot compute probabilities.")
+        }
+      
+      prob_init <- ifelse(eligible, n_seq[1] * area / rem_area_unit, 0)
+      prob_last <- rep(1, nrow(samplingFrame))
+  # Iterate over requested nested sizes
+  for (n_now in n_seq) {
     
-    
-    if(n_now == n_seq2[1]) {
-      n_ <- n_now
-    } else {
-      # Auto n - find the highest possible next n that results in probabilities <1
-      max_n <- n_last-ceiling(max(n_last - rem_area_by_stratum)) - safetyNumber
-      if(n_last-max_n < min_step) {max_n <- n_last-min_step}
-      n_ <- ifelse(auto_n, max_n, n_now)
+    if (!quiet) {
+      message(paste("Sampling with n = ", n_now))
     }
-
 
     # Inclusion probabilities for this draw (0 for ineligible)
-    prob <- ifelse(eligible, n_ * area / rem_area_unit, 0)
+    if(n_now == n_seq[1]) {
+      prob <- prob_init
+    } else {       
+      # Remaining n per stratum among eligible units
+      rem_n_by_stratum <- tapply(as.numeric(eligible), stratum, sum)      
+      # Map each unit's stratum to the remaining n
+      rem_n_unit <- rem_n_by_stratum[as.character(stratum)]
+        if (any(rem_n_unit <= 0)) {
+          stop("Some strata have zero remaining population units; cannot compute probabilities.")
+        }
+      prob <- ifelse(eligible, n_now / rem_n_unit, 0)
+    }
+
     if (any(prob >= 1)) {
       stop("Some population units have >1 probability of being selected.")
     }
@@ -206,8 +200,10 @@ nested_balanced <- function(
     
     # Keep only selected rows, and append probabilities
     current_sample <- samplingFrame[sel_idx, , drop = FALSE] |>
-      cbind(current_pi = prob[sel_idx],
-            accumulated_pi = prob[sel_idx]*prob_last[sel_idx])
+      cbind(
+        initial_pi = prob_init[sel_idx],
+        current_pi = prob[sel_idx],
+        accumulated_pi = prob[sel_idx]*prob_last[sel_idx])
         
     n_string <- get_n(current_sample)
 
@@ -215,20 +211,21 @@ nested_balanced <- function(
       warning("The n differs amongst strata in one of the samples.")
     }
 
-    if(unique(n_string)[1] != n_) {
+    if(unique(n_string)[1] != n_now) {
       warning("The n for at least one of the samples differs from the prescribed n.")
     }
 
-    if (anyDuplicated(current_sample[[id_col]]) != 0) stop("The ID columns on one of the samples duplicates.")
+    if(anyDuplicated(current_sample[[id_col]]) != 0) stop("The ID columns on one of the samples duplicates.")
       
     # Save result
-    name_now <- paste(out_name, n_, sep = "_")
+    name_now <- paste(out_name, n_now, sep = "_")
     if (return_dataframe) {
       out[[name_now]] <- current_sample
       
     } else {
       out[[name_now]] <- list(
         ID = current_sample[[id_col]], 
+        initial_prob = current_sample$initial_pi,
         prob = current_sample$accumulated_pi
       )
     }
@@ -238,9 +235,6 @@ nested_balanced <- function(
     eligible <- rep(FALSE, nrow(samplingFrame))
     eligible[sel_idx] <- TRUE
 
-    if(n_ < min(n_seq)) break
-
-    n_last <- n_
     prob_last <- prob
     
   }
